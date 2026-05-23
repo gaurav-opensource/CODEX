@@ -48,12 +48,21 @@ class RecoveryRequest(BaseModel):
     workflow_id: UUID
     signal: str = "latency_spike"
     severity: str = "medium"
+    force_verification_failure: bool = False
+
+
+class RollbackInfo(BaseModel):
+    attempted: bool = False
+    restored: bool = False
+    checkpoint_reason: str | None = None
+    message: str | None = None
 
 
 class RecoveryResult(BaseModel):
     incident: Incident
     timeline: list[str]
     recovered: bool
+    rollback: RollbackInfo | None = None
 
 
 class MetricSnapshot(BaseModel):

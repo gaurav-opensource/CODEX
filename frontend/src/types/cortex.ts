@@ -26,6 +26,13 @@ export interface CortexEvent {
   created_at: string;
 }
 
+export interface RollbackInfo {
+  attempted: boolean;
+  restored: boolean;
+  checkpoint_reason: string | null;
+  message: string | null;
+}
+
 export interface RecoveryResult {
   incident: {
     id: string;
@@ -40,5 +47,6 @@ export interface RecoveryResult {
   };
   timeline: string[];
   recovered: boolean;
+  rollback: RollbackInfo | null;
 }
 

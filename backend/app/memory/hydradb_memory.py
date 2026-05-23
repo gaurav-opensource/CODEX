@@ -3,11 +3,11 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from app.core.logging import get_logger
 from app.integrations.hydradb import HydraDBClient, HydraDBConnectionError
-from app.schemas.workflow import Incident, Workflow
+from app.schemas.workflow import Incident, Workflow, WorkflowStatus
 
 logger = get_logger(__name__)
 
@@ -22,6 +22,7 @@ class HydraDBMemoryService:
             "checkpoint": {},
             "incident": {},
             "recovery_history": {},
+            "rollback_history": {},
             "agent_state": {},
         }
 
@@ -70,8 +71,83 @@ class HydraDBMemoryService:
         await self._store(
             "checkpoint",
             key,
-            {"workflow": workflow, "reason": reason},
+            {"workflow": workflow, "reason": reason, "stored_at": datetime.utcnow().isoformat()},
             metadata={"workflow_id": str(workflow.id), "reason": reason},
+        )
+
+    async def list_checkpoints(self, workflow_id: UUID) -> list[dict[str, Any]]:
+        prefix = f"{workflow_id}:"
+        items: list[tuple[str, dict[str, Any]]] = []
+        for key, payload in self._local.get("checkpoint", {}).items():
+            if key.startswith(prefix):
+                items.append((key, payload))
+        return [payload for _, payload in sorted(items, key=lambda item: item[0], reverse=True)]
+
+    def _parse_checkpoint(self, payload: dict[str, Any]) -> tuple[Workflow, str] | None:
+        try:
+            workflow_payload = payload.get("workflow")
+            if not isinstance(workflow_payload, dict):
+                return None
+            workflow = Workflow.model_validate(workflow_payload)
+            reason = str(payload.get("reason", ""))
+            return workflow, reason
+        except ValidationError:
+            return None
+
+    async def get_latest_stable_checkpoint(self, workflow_id: UUID) -> dict[str, Any] | None:
+        stable_statuses = {WorkflowStatus.HEALTHY, WorkflowStatus.DEGRADED}
+        unstable_reason_markers = ("recovering", "rollback:", "status:failed")
+
+        candidates: list[tuple[str, dict[str, Any], Workflow, str]] = []
+        for payload in await self.list_checkpoints(workflow_id):
+            parsed = self._parse_checkpoint(payload)
+            if parsed is None:
+                continue
+            workflow, reason = parsed
+            reason_lower = reason.lower()
+            if workflow.status not in stable_statuses:
+                continue
+            if any(marker in reason_lower for marker in unstable_reason_markers):
+                continue
+            key = f"{workflow_id}:{payload.get('stored_at', '')}"
+            candidates.append((key, payload, workflow, reason))
+
+        if not candidates:
+            return None
+
+        preferred = [item for item in candidates if item[3].startswith("pre_recovery:") or item[3].startswith("bootstrap:")]
+        pool = preferred or candidates
+        pool.sort(key=lambda item: item[0], reverse=True)
+        return pool[0][1]
+
+    async def store_rollback_history(
+        self,
+        *,
+        workflow_id: UUID,
+        incident_id: UUID | None,
+        restored: bool,
+        checkpoint_reason: str | None,
+        timeline: list[str],
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        key = f"{workflow_id}:{datetime.utcnow().isoformat()}"
+        payload = {
+            "workflow_id": workflow_id,
+            "incident_id": incident_id,
+            "restored": restored,
+            "checkpoint_reason": checkpoint_reason,
+            "timeline": timeline,
+            "metadata": metadata or {},
+        }
+        await self._store(
+            "rollback_history",
+            key,
+            payload,
+            metadata={
+                "workflow_id": str(workflow_id),
+                "restored": str(restored).lower(),
+                "incident_id": str(incident_id) if incident_id else "",
+            },
         )
 
     async def store_incident(self, incident: Incident) -> None:

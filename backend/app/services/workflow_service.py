@@ -14,6 +14,7 @@ class WorkflowService:
         if not await hydradb_memory.list_workflows():
             for workflow in self._seed_workflows():
                 await hydradb_memory.upsert_workflow(workflow)
+                await hydradb_memory.store_checkpoint(workflow, reason="bootstrap:stable")
         self._bootstrapped = True
 
     async def list_workflows(self) -> list[Workflow]:
@@ -32,6 +33,13 @@ class WorkflowService:
         await hydradb_memory.upsert_workflow(updated)
         await hydradb_memory.store_checkpoint(updated, reason=f"status:{status}")
         return updated
+
+    async def restore_from_checkpoint(self, workflow: Workflow, checkpoint_reason: str) -> Workflow:
+        if workflow.status in {WorkflowStatus.RECOVERING, WorkflowStatus.FAILED}:
+            raise ValueError("Checkpoint workflow state is not restorable")
+        restored = await hydradb_memory.upsert_workflow(workflow)
+        await hydradb_memory.store_checkpoint(restored, reason=f"rollback:restored:{checkpoint_reason}")
+        return restored
 
     def metrics(self) -> MetricSnapshot:
         return MetricSnapshot(

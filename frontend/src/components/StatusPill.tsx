@@ -7,7 +7,17 @@ const labels: Record<WorkflowStatus, string> = {
   failed: "Failed"
 };
 
-export function StatusPill({ status }: { status: WorkflowStatus }) {
-  return <span className={`status status-${status}`}>{labels[status]}</span>;
+interface StatusPillProps {
+  status: WorkflowStatus;
+  livePhase?: "recovering" | "rollback" | "restored";
 }
 
+export function StatusPill({ status, livePhase }: StatusPillProps) {
+  if (livePhase === "rollback") {
+    return <span className="status status-rollback">Rollback</span>;
+  }
+  if (livePhase === "restored") {
+    return <span className="status status-restored">Restored</span>;
+  }
+  return <span className={`status status-${status}${livePhase ? " status-pulse" : ""}`}>{labels[status]}</span>;
+}
