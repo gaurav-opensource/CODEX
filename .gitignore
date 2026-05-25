@@ -12,3 +12,6 @@ dist/
 vite.config.js
 vite.config.d.ts
 .DS_Store
+
+echo server.err.log >> .gitignore
+echo server.out.log >> .gitignore
