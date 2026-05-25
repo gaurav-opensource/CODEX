@@ -12,6 +12,7 @@ import { OverviewPage } from "../pages/OverviewPage";
 import { RecoveryTimelinePage } from "../pages/RecoveryTimelinePage";
 import { SettingsPage } from "../pages/SettingsPage";
 import { WorkflowsPage } from "../pages/WorkflowsPage";
+import RecoverySandboxPage from "@/pages/RecoverySandboxPage";
 
 export function DashboardRoutes() {
   return (
@@ -19,6 +20,7 @@ export function DashboardRoutes() {
       <Route element={<DashboardLayout />}>
         <Route index element={<OverviewPage />} />
         <Route path="workflows" element={<WorkflowsPage />} />
+        <Route path="sandbox" element={<RecoverySandboxPage />} />
         <Route path="recovery" element={<RecoveryTimelinePage />} />
         <Route path="agents" element={<AgentRuntimePage />} />
         <Route path="reasoning" element={<AIAgentReasoningPage />} />

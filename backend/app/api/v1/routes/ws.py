@@ -21,6 +21,11 @@ async def stream_recovery(websocket: WebSocket) -> None:
     await websocket_manager.stream_event_channel(websocket, EventChannel.RECOVERY)
 
 
+@router.websocket("/ws/sandbox")
+async def stream_sandbox(websocket: WebSocket) -> None:
+    await websocket_manager.stream_broadcast_channel(websocket, EventChannel.SANDBOX)
+
+
 @router.websocket("/ws/reasoning")
 async def stream_reasoning(websocket: WebSocket) -> None:
     await websocket_manager.stream_event_channel(websocket, EventChannel.REASONING)

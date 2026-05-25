@@ -34,7 +34,7 @@ export const dashboardNavSections: DashboardNavSection[] = [
     items: [
       { to: "/dashboard", label: "Overview", icon: LayoutDashboard, end: true },
       { to: "/dashboard/workflows", label: "Workflows", icon: Workflow },
-      { to: "/sandbox", label: "Recovery Sandbox", icon: FlaskConical },
+      { to: "/dashboard/sandbox", label: "Recovery Sandbox", icon: FlaskConical },
       { to: "/dashboard/recovery", label: "Recovery Timeline", icon: GitBranch }
     ]
   },

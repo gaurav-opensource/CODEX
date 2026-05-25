@@ -32,6 +32,8 @@ type SandboxStreamContextValue = {
   timelineStep: number;
   timelineStages: TimelineStageStatus[];
   connected: boolean;
+  connectionState: "connecting" | "connected" | "reconnecting" | "disconnected";
+  error: string | null;
   clearStream: () => void;
 };
 
@@ -84,9 +86,12 @@ export function RecoverySandboxStreamProvider({ children }: { children: ReactNod
   const [timelineReached, setTimelineReached] = useState<boolean[]>(createInitialTimelineReached);
   const [latestAgent, setLatestAgent] = useState<SandboxEvent | null>(null);
   const [connected, setConnected] = useState(false);
+  const [connectionState, setConnectionState] = useState<SandboxStreamContextValue["connectionState"]>("connecting");
+  const [error, setError] = useState<string | null>(null);
   const seenRef = useRef(new Set<string>());
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryRef = useRef(0);
   const stoppedRef = useRef(false);
 
   const setters = useMemo(
@@ -106,20 +111,41 @@ export function RecoverySandboxStreamProvider({ children }: { children: ReactNod
 
   const connect = useCallback(() => {
     if (stoppedRef.current) return;
-    
-    // Skip connection if sandbox is disabled in production
-    if (!env.isSandboxEnabled) {
-      console.debug("Sandbox mode is disabled in production");
+
+    if (!env.sandboxWsUrl) {
+      setConnected(false);
+      setConnectionState("disconnected");
+      setError("Sandbox stream is not configured.");
       return;
     }
 
+    if (reconnectRef.current) {
+      clearTimeout(reconnectRef.current);
+      reconnectRef.current = null;
+    }
+
+    setConnectionState(retryRef.current === 0 ? "connecting" : "reconnecting");
+    setError(null);
+
     wsRef.current?.close();
-    wsRef.current = connectSandboxSocket({
-      onOpen: () => setConnected(true),
+    const socket = connectSandboxSocket({
+      onOpen: () => {
+        retryRef.current = 0;
+        setConnected(true);
+        setConnectionState("connected");
+        setError(null);
+      },
       onClose: () => {
         setConnected(false);
         if (stoppedRef.current) return;
-        reconnectRef.current = setTimeout(connect, 1500);
+        const delay = Math.min(5000, 400 * 2 ** retryRef.current);
+        retryRef.current += 1;
+        setConnectionState("reconnecting");
+        reconnectRef.current = setTimeout(connect, delay);
+      },
+      onError: () => {
+        setConnected(false);
+        setError("Live sandbox stream unavailable. Reconnecting…");
       },
       onMessage: (event) => {
         const key = eventKey(event);
@@ -129,6 +155,7 @@ export function RecoverySandboxStreamProvider({ children }: { children: ReactNod
         applyEvent(event, setters);
       },
     });
+    wsRef.current = socket;
   }, [setters]);
 
   useEffect(() => {
@@ -163,6 +190,8 @@ export function RecoverySandboxStreamProvider({ children }: { children: ReactNod
       timelineStep,
       timelineStages,
       connected,
+      connectionState,
+      error,
       clearStream,
     }),
     [
@@ -174,6 +203,8 @@ export function RecoverySandboxStreamProvider({ children }: { children: ReactNod
       timelineStep,
       timelineStages,
       connected,
+      connectionState,
+      error,
       clearStream,
     ]
   );

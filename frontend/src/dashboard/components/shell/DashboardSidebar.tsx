@@ -93,7 +93,7 @@ export function DashboardSidebar({
               {!collapsed && (
                 <span>
                   {status.active_recoveries > 0 ? `${status.active_recoveries} recovering` : ""}
-                  {status.active_recoveries > 0 && status.degraded_workflows > 0 ? " · " : ""}
+                  {status.active_recoveries > 0 && status.degraded_workflows > 0 ? " / " : ""}
                   {status.degraded_workflows > 0 ? `${status.degraded_workflows} degraded` : ""}
                 </span>
               )}

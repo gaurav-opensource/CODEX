@@ -11,58 +11,137 @@ import {
 import { RecoverySandboxStreamProvider, useRecoverySandboxStream } from "@/hooks/useRecoverySandboxStream";
 
 function SandboxConnectionBadge() {
-  const { connected } = useRecoverySandboxStream();
+  const { connected, connectionState } = useRecoverySandboxStream();
+  const tone = connected
+    ? "bg-emerald-900/70 text-emerald-200 border border-emerald-500/30"
+    : connectionState === "reconnecting"
+      ? "bg-amber-900/70 text-amber-200 border border-amber-500/30"
+      : "bg-rose-900/70 text-rose-200 border border-rose-500/30";
   return (
-    <span
-      className={`text-xs px-2 py-0.5 rounded ${connected ? "bg-emerald-900 text-emerald-300" : "bg-red-900 text-red-300"}`}
-    >
-      WS {connected ? "live" : "disconnected"}
+    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] ${tone}`}>
+      {connected ? "WS Live" : connectionState === "reconnecting" ? "WS Reconnecting" : "WS Offline"}
     </span>
+  );
+}
+
+function RecoverySandboxWorkspace() {
+  const { clearStream, connected, error } = useRecoverySandboxStream();
+
+  return (
+    <div className="page-stack max-w-none">
+      <header className="page-header">
+        <div>
+          <p className="page-kicker">Recovery Operations</p>
+          <h1>Recovery Sandbox</h1>
+          <p className="page-subtitle">
+            Inject incidents, watch live recovery streams, and validate runtime behavior without leaving the production dashboard shell.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <SandboxConnectionBadge />
+          <button
+            type="button"
+            onClick={clearStream}
+            className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-medium text-slate-200 transition hover:border-cyan-500/40 hover:text-cyan-100"
+          >
+            Clear Stream
+          </button>
+        </div>
+      </header>
+
+      {!connected && error ? (
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/8 px-4 py-3 text-sm text-amber-100">
+          {error}
+        </div>
+      ) : null}
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(300px,360px)_minmax(0,1fr)]">
+        <aside className="dash-card overflow-hidden">
+          <div className="dash-card-header">
+            <div className="dash-card-title">Failure Injection</div>
+            <p className="dash-card-desc">Choose a workflow, inject a signal, and optionally trigger autonomous recovery.</p>
+          </div>
+          <div className="dash-card-content">
+            <FailureControlPanel />
+          </div>
+        </aside>
+
+        <section className="grid gap-4">
+          <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,420px)]">
+            <section className="dash-card overflow-hidden">
+              <div className="dash-card-header">
+                <div className="dash-card-title">Infrastructure Topology</div>
+                <p className="dash-card-desc">Live runtime visualization across gateway, worker, metrics, and HydraDB nodes.</p>
+              </div>
+              <div className="dash-card-content">
+                <InfrastructureGraph />
+              </div>
+            </section>
+
+            <section className="grid gap-4">
+              <div className="dash-card">
+                <div className="dash-card-header">
+                  <div className="dash-card-title">Live AI Reasoning</div>
+                </div>
+                <div className="dash-card-content">
+                  <ReasoningPipelineStrip />
+                  <div className="mt-3">
+                    <LiveReasoningFeed />
+                  </div>
+                </div>
+              </div>
+
+              <div className="dash-card">
+                <div className="dash-card-header">
+                  <div className="dash-card-title">Agent Execution</div>
+                </div>
+                <div className="dash-card-content">
+                  <AgentExecutionCard />
+                </div>
+              </div>
+
+              <div className="dash-card">
+                <div className="dash-card-header">
+                  <div className="dash-card-title">Recovery Metrics</div>
+                </div>
+                <div className="dash-card-content">
+                  <RecoveryMetricsPanel />
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
+            <section className="dash-card">
+              <div className="dash-card-header">
+                <div className="dash-card-title">Recovery Timeline</div>
+                <p className="dash-card-desc">Recovery stage progression stays in sync with failure, reasoning, verification, and memory events.</p>
+              </div>
+              <div className="dash-card-content">
+                <RecoveryTimeline />
+              </div>
+            </section>
+
+            <section className="dash-card terminal-card">
+              <div className="dash-card-header">
+                <div className="dash-card-title">Event Console</div>
+                <p className="dash-card-desc">Recent sandbox, runtime, and recovery stream frames.</p>
+              </div>
+              <div className="dash-card-content">
+                <EventConsole />
+              </div>
+            </section>
+          </div>
+        </section>
+      </div>
+    </div>
   );
 }
 
 const RecoverySandboxPage = () => {
   return (
     <RecoverySandboxStreamProvider>
-      <div className="flex flex-col h-screen bg-gray-950 text-gray-100">
-        <header className="flex items-center justify-between px-4 py-2 border-b border-gray-800 bg-gray-900">
-          <h1 className="font-semibold text-lg">Recovery Sandbox</h1>
-          <SandboxConnectionBadge />
-        </header>
-        <div className="flex flex-1 overflow-hidden">
-          <aside className="w-80 min-w-72 max-w-xs bg-gray-900 border-r border-gray-800 p-4 flex flex-col gap-4">
-            <div className="font-bold text-lg mb-2">Failure Injection</div>
-            <FailureControlPanel />
-          </aside>
-          <main className="flex-1 flex flex-col bg-gray-950 p-4 gap-4 overflow-hidden">
-            <div className="flex-1 flex flex-row gap-4 overflow-hidden">
-              <section className="flex-1 bg-gray-900 rounded-lg shadow p-4 overflow-hidden">
-                <div className="font-bold text-lg mb-2">Infrastructure Topology</div>
-                <InfrastructureGraph />
-              </section>
-              <section className="w-96 min-w-80 max-w-md bg-gray-900 rounded-lg shadow p-4 flex flex-col gap-4 overflow-hidden">
-                <div className="font-bold text-lg mb-2">Live AI Reasoning</div>
-                <ReasoningPipelineStrip />
-                <LiveReasoningFeed />
-                <div className="font-bold text-lg mt-2 mb-2">Agent Execution</div>
-                <AgentExecutionCard />
-                <div className="font-bold text-lg mt-2 mb-2">Recovery Metrics</div>
-                <RecoveryMetricsPanel />
-              </section>
-            </div>
-          </main>
-        </div>
-        <footer className="w-full bg-gray-900 border-t border-gray-800 p-4 flex flex-row gap-4 items-start">
-          <div className="flex-1">
-            <div className="font-bold text-lg mb-2">Recovery Timeline</div>
-            <RecoveryTimeline />
-          </div>
-          <div className="w-2/5 min-w-80 max-w-2xl">
-            <div className="font-bold text-lg mb-2">Event Console</div>
-            <EventConsole />
-          </div>
-        </footer>
-      </div>
+      <RecoverySandboxWorkspace />
     </RecoverySandboxStreamProvider>
   );
 };
