@@ -22,6 +22,7 @@ logger = get_logger(__name__)
 async def lifespan(app: FastAPI):
     configure_logging()
     logger.info("cortex_starting version=%s", settings.app_version)
+
     await hydradb_memory.start()
     await workflow_service.bootstrap()
     await event_bus.start()
@@ -29,13 +30,16 @@ async def lifespan(app: FastAPI):
     await runtime_service.start()
     await sandbox_bridge.start()
     await operational_service.start()
+
     yield
+
     await operational_service.stop()
     await sandbox_bridge.stop()
     await runtime_service.stop()
     await reasoning_service.stop()
     await event_bus.stop()
     await hydradb_memory.stop()
+
     logger.info("cortex_stopped")
 
 
@@ -46,14 +50,22 @@ def create_app() -> FastAPI:
         description="Self-Healing AI Workflow Brain",
         lifespan=lifespan,
     )
+
+    # Production + Development CORS
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origins,
+        allow_origins=[
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "https://cortex-frontend.netlify.app",
+        ],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
     register_exception_handlers(app)
+
     app.include_router(api_router, prefix=settings.api_prefix)
 
     if settings.enable_testing_routes:
