@@ -12,7 +12,7 @@ class HydraDBConnectionError(RuntimeError):
 class HydraDBClient:
     def __init__(self) -> None:
         self.project_id = settings.hydradb_project_id
-        self.api_key = settings.hydradb_api_key or os.getenv("HYDRA_DB_API_KEY")
+        self.api_key = settings.hydradb_api_key or os.getenv("HYDRADB_API_KEY") or os.getenv("HYDRA_DB_API_KEY")
         self._client: Any | None = None
 
     @property
