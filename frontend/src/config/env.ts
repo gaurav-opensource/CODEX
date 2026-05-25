@@ -8,28 +8,20 @@ function trimTrailingSlash(value: string): string {
 const apiBaseUrl = trimTrailingSlash(import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL);
 const wsBaseUrl = trimTrailingSlash(import.meta.env.VITE_WS_BASE_URL ?? DEFAULT_WS_BASE_URL);
 
-function resolveSandboxWsUrl(): string {
+function resolveSandboxWsUrl(): string | null {
   const explicit = import.meta.env.VITE_SANDBOX_WS_URL as string | undefined;
   if (explicit) {
     return trimTrailingSlash(explicit);
   }
 
-  if (wsBaseUrl.includes("/testing/ws")) {
-    return wsBaseUrl;
-  }
-
+  // Only use testing websocket in development mode
   if (import.meta.env.DEV && apiBaseUrl.startsWith("http")) {
     const origin = apiBaseUrl.replace(/\/api\/v1$/, "");
     return `${origin.replace(/^http/, "ws")}/api/v1/testing/ws`;
   }
 
-  if (wsBaseUrl) {
-    const origin = wsBaseUrl.replace(/\/api\/v1\/ws$/, "").replace(/\/ws$/, "");
-    return `${origin}/api/v1/testing/ws`;
-  }
-
-  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-  return `${protocol}://${window.location.host}/api/v1/testing/ws`;
+  // In production, sandbox is disabled unless explicitly configured
+  return null;
 }
 
 export const env = {
@@ -38,5 +30,6 @@ export const env = {
   sandboxWsUrl: resolveSandboxWsUrl(),
   apiTimeoutMs: Number(import.meta.env.VITE_API_TIMEOUT_MS ?? 10000),
   apiRetryCount: Number(import.meta.env.VITE_API_RETRY_COUNT ?? 1),
-  eventBatchWindowMs: Number(import.meta.env.VITE_EVENT_BATCH_WINDOW_MS ?? 120)
+  eventBatchWindowMs: Number(import.meta.env.VITE_EVENT_BATCH_WINDOW_MS ?? 120),
+  isSandboxEnabled: import.meta.env.DEV || Boolean(import.meta.env.VITE_SANDBOX_WS_URL)
 };

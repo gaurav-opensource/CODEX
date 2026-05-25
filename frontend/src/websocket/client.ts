@@ -38,6 +38,10 @@ export function connectEventSocket(path: string, handlers: SocketHandlers<Cortex
   return createSocket(`${env.wsBaseUrl}/${path}`, isCortexEvent, handlers);
 }
 
-export function connectSandboxSocket(handlers: SocketHandlers<SandboxEvent>): WebSocket {
+export function connectSandboxSocket(handlers: SocketHandlers<SandboxEvent>): WebSocket | null {
+  if (!env.sandboxWsUrl) {
+    // Sandbox disabled in production - return null
+    return null;
+  }
   return createSocket(env.sandboxWsUrl, isSandboxEvent, handlers);
 }

@@ -11,6 +11,7 @@ import {
 } from "react";
 import type { Dispatch, SetStateAction } from "react";
 
+import { env } from "@/config/env";
 import {
   applyTimelineReached,
   createInitialTimelineReached,
@@ -105,6 +106,12 @@ export function RecoverySandboxStreamProvider({ children }: { children: ReactNod
 
   const connect = useCallback(() => {
     if (stoppedRef.current) return;
+    
+    // Skip connection if sandbox is disabled in production
+    if (!env.isSandboxEnabled) {
+      console.debug("Sandbox mode is disabled in production");
+      return;
+    }
 
     wsRef.current?.close();
     wsRef.current = connectSandboxSocket({

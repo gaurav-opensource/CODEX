@@ -1,4 +1,5 @@
 import { requestJson } from "@/services/http/client";
+import { env } from "@/config/env";
 import type {
   AgentRuntime,
   AnalyticsSnapshot,
@@ -36,11 +37,22 @@ export const cortexApi = {
     failure_type: string;
     injected_by?: string;
     auto_recover: boolean;
-  }) =>
-    requestJson<{ status: string; workflow_id: string; signal: string; auto_recover: boolean }>("/testing/inject-failure", {
+  }) => {
+    // Failure injection disabled in production
+    if (!env.isSandboxEnabled) {
+      console.debug("Failure injection is disabled in production");
+      return Promise.resolve({ 
+        status: "disabled", 
+        workflow_id: payload.workflow_id, 
+        signal: "none", 
+        auto_recover: false 
+      });
+    }
+    return requestJson<{ status: string; workflow_id: string; signal: string; auto_recover: boolean }>("/testing/inject-failure", {
       method: "POST",
       body: JSON.stringify(payload)
-    }),
+    });
+  },
   incidents: () => requestJson<Incident[]>("/incidents"),
   incident: (incidentId: string) => requestJson<Incident>(`/incidents/${incidentId}`),
   analytics: () => requestJson<AnalyticsSnapshot>("/analytics"),
