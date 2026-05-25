@@ -50,10 +50,8 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        allow_methods=["*"],
         allow_headers=["*"],
-        expose_headers=["Content-Type", "Authorization"],
-        max_age=600,
     )
     register_exception_handlers(app)
     app.include_router(api_router, prefix=settings.api_prefix)
