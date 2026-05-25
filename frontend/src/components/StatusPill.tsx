@@ -1,10 +1,11 @@
-import type { WorkflowStatus } from "../types/cortex";
+import type { WorkflowStatus } from "../dashboard/types/cortex";
 
 const labels: Record<WorkflowStatus, string> = {
   healthy: "Healthy",
   degraded: "Degraded",
   recovering: "Recovering",
-  failed: "Failed"
+  failed: "Failed",
+  quarantined: "Quarantined"
 };
 
 interface StatusPillProps {

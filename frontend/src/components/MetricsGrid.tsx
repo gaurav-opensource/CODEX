@@ -1,7 +1,7 @@
 import { Activity, Gauge, RefreshCcw, Timer, Wifi } from "lucide-react";
 import { memo, useMemo } from "react";
 
-import type { MetricSnapshot } from "../types/cortex";
+import type { MetricSnapshot } from "../dashboard/types/cortex";
 
 export const MetricsGrid = memo(function MetricsGrid({ metrics }: { metrics: MetricSnapshot | null }) {
   const items = useMemo(

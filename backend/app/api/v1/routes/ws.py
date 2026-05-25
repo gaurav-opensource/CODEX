@@ -1,16 +1,26 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket
 
-from app.services.event_bus import event_bus
+from app.core.events import EventChannel
+from app.services.websocket_manager import websocket_manager
 
 router = APIRouter()
 
 
 @router.websocket("/ws/events")
 async def stream_events(websocket: WebSocket) -> None:
-    await websocket.accept()
-    try:
-        async for event in event_bus.subscribe():
-            await websocket.send_json(event.model_dump(mode="json"))
-    except WebSocketDisconnect:
-        return
+    await websocket_manager.stream_event_channel(websocket, EventChannel.EVENTS)
 
+
+@router.websocket("/ws/runtime")
+async def stream_runtime(websocket: WebSocket) -> None:
+    await websocket_manager.stream_event_channel(websocket, EventChannel.RUNTIME)
+
+
+@router.websocket("/ws/recovery")
+async def stream_recovery(websocket: WebSocket) -> None:
+    await websocket_manager.stream_event_channel(websocket, EventChannel.RECOVERY)
+
+
+@router.websocket("/ws/reasoning")
+async def stream_reasoning(websocket: WebSocket) -> None:
+    await websocket_manager.stream_event_channel(websocket, EventChannel.REASONING)

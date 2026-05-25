@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
@@ -10,6 +10,10 @@ from app.integrations.hydradb import HydraDBClient, HydraDBConnectionError
 from app.schemas.workflow import Incident, Workflow, WorkflowStatus
 
 logger = get_logger(__name__)
+
+
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class HydraDBMemoryService:
@@ -24,6 +28,7 @@ class HydraDBMemoryService:
             "recovery_history": {},
             "rollback_history": {},
             "agent_state": {},
+            "reasoning_trace": {},
         }
 
     @property
@@ -57,7 +62,7 @@ class HydraDBMemoryService:
         return Workflow.model_validate(item) if item else None
 
     async def upsert_workflow(self, workflow: Workflow) -> Workflow:
-        updated = workflow.model_copy(update={"updated_at": datetime.utcnow()})
+        updated = workflow.model_copy(update={"updated_at": utcnow()})
         await self._store("workflow", str(updated.id), updated, metadata={"workflow_id": str(updated.id)})
         await self.store_snapshot(updated)
         return updated
@@ -67,11 +72,11 @@ class HydraDBMemoryService:
         await self._store("snapshot", key, workflow, metadata={"workflow_id": str(workflow.id)})
 
     async def store_checkpoint(self, workflow: Workflow, reason: str) -> None:
-        key = f"{workflow.id}:{datetime.utcnow().isoformat()}"
+        key = f"{workflow.id}:{utcnow().isoformat()}"
         await self._store(
             "checkpoint",
             key,
-            {"workflow": workflow, "reason": reason, "stored_at": datetime.utcnow().isoformat()},
+            {"workflow": workflow, "reason": reason, "stored_at": utcnow().isoformat()},
             metadata={"workflow_id": str(workflow.id), "reason": reason},
         )
 
@@ -120,6 +125,93 @@ class HydraDBMemoryService:
         pool.sort(key=lambda item: item[0], reverse=True)
         return pool[0][1]
 
+    async def list_snapshots(self, workflow_id: UUID) -> list[dict[str, Any]]:
+        prefix = f"{workflow_id}:"
+        items = [
+            payload
+            for key, payload in self._local.get("snapshot", {}).items()
+            if key.startswith(prefix)
+        ]
+        return list(reversed(items))
+
+    async def list_rollback_history(self, workflow_id: UUID) -> list[dict[str, Any]]:
+        items = [
+            payload
+            for key, payload in self._local.get("rollback_history", {}).items()
+            if str(payload.get("workflow_id")) == str(workflow_id)
+        ]
+        return list(reversed(items))
+
+    async def list_recovery_history(self, workflow_id: UUID) -> list[dict[str, Any]]:
+        items = [
+            payload
+            for key, payload in self._local.get("recovery_history", {}).items()
+            if str(payload.get("incident", {}).get("workflow_id")) == str(workflow_id)
+        ]
+        return items
+
+    async def list_agent_states(self, workflow_id: UUID) -> list[dict[str, Any]]:
+        return [
+            payload
+            for payload in self._local.get("agent_state", {}).values()
+            if str(payload.get("workflow_id")) == str(workflow_id)
+        ]
+
+    async def store_reasoning_trace(
+        self,
+        *,
+        workflow_id: UUID,
+        incident_id: UUID,
+        workflow_name: str,
+        agent_name: str,
+        signal: str,
+        selected_strategy: str,
+        alternatives: list[str],
+        confidence: int,
+        risk: str,
+        reasoning_summary: list[str],
+        execution_explanation: str,
+        success: bool | None,
+        recovery_duration_ms: int | None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        key = f"{workflow_id}:{incident_id}:{agent_name}:{utcnow().isoformat()}"
+        payload = {
+            "workflow_id": workflow_id,
+            "incident_id": incident_id,
+            "workflow_name": workflow_name,
+            "agent_name": agent_name,
+            "signal": signal,
+            "selected_strategy": selected_strategy,
+            "alternatives": alternatives,
+            "confidence": confidence,
+            "risk": risk,
+            "reasoning_summary": reasoning_summary,
+            "execution_explanation": execution_explanation,
+            "success": success,
+            "recovery_duration_ms": recovery_duration_ms,
+            "created_at": utcnow().isoformat(),
+            "metadata": metadata or {},
+        }
+        await self._store(
+            "reasoning_trace",
+            key,
+            payload,
+            metadata={
+                "workflow_id": str(workflow_id),
+                "incident_id": str(incident_id),
+                "agent": agent_name,
+                "strategy": selected_strategy,
+                "signal": signal,
+            },
+        )
+
+    async def list_reasoning_traces(self, workflow_id: UUID | None) -> list[dict[str, Any]]:
+        items = list(self._local.get("reasoning_trace", {}).values())
+        if workflow_id is not None:
+            items = [payload for payload in items if str(payload.get("workflow_id")) == str(workflow_id)]
+        return sorted(items, key=lambda item: str(item.get("created_at", "")), reverse=True)
+
     async def store_rollback_history(
         self,
         *,
@@ -130,7 +222,7 @@ class HydraDBMemoryService:
         timeline: list[str],
         metadata: dict[str, Any] | None = None,
     ) -> None:
-        key = f"{workflow_id}:{datetime.utcnow().isoformat()}"
+        key = f"{workflow_id}:{utcnow().isoformat()}"
         payload = {
             "workflow_id": workflow_id,
             "incident_id": incident_id,
@@ -158,6 +250,17 @@ class HydraDBMemoryService:
             metadata={"workflow_id": str(incident.workflow_id), "severity": incident.severity},
         )
 
+    async def list_incidents(self) -> list[Incident]:
+        return sorted(
+            (Incident.model_validate(item) for item in self._local["incident"].values()),
+            key=lambda item: item.created_at,
+            reverse=True,
+        )
+
+    async def get_incident(self, incident_id: UUID) -> Incident | None:
+        item = self._local["incident"].get(str(incident_id))
+        return Incident.model_validate(item) if item else None
+
     async def store_recovery_history(self, incident: Incident, timeline: list[str], recovered: bool) -> None:
         await self._store(
             "recovery_history",
@@ -174,13 +277,23 @@ class HydraDBMemoryService:
         facts: dict[str, Any],
         timeline: list[str],
     ) -> None:
-        key = f"{workflow_id}:{agent_name}:{datetime.utcnow().isoformat()}"
+        key = f"{workflow_id}:{agent_name}:{utcnow().isoformat()}"
         await self._store(
             "agent_state",
             key,
             {"workflow_id": workflow_id, "agent_name": agent_name, "facts": facts, "timeline": timeline},
             metadata={"workflow_id": str(workflow_id), "agent": agent_name},
         )
+
+    def counts(self) -> dict[str, int]:
+        return {kind: len(items) for kind, items in self._local.items()}
+
+    async def latest_checkpoint_label(self) -> str | None:
+        checkpoints = self._local.get("checkpoint", {})
+        if not checkpoints:
+            return None
+        key = sorted(checkpoints)[-1]
+        return str(checkpoints[key].get("reason"))
 
     async def _store(
         self,

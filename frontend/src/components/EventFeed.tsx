@@ -1,8 +1,8 @@
 import { RadioTower } from "lucide-react";
 import { memo } from "react";
 
-import { eventCategory, eventLabel, formatTime, memoryMessageForEvent } from "../lib/recoveryRuntime";
-import type { CortexEvent } from "../types/cortex";
+import { eventCategory, eventLabel, formatTime, memoryMessageForEvent } from "../dashboard/lib/recoveryRuntime";
+import type { CortexEvent } from "../dashboard/types/cortex";
 
 interface EventFeedProps {
   events: CortexEvent[];

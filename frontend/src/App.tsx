@@ -1,7 +1,4 @@
 import { Canvas, useFrame } from "@react-three/fiber";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import Lenis from "lenis";
 import {
   Activity,
   ArrowRight,
@@ -21,19 +18,14 @@ import {
   Workflow,
   Zap
 } from "lucide-react";
-import { AnimatePresence, motion, useInView, useScroll, useTransform } from "framer-motion";
-import { memo, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { Group, Points } from "three";
 
-import { AgentRuntimePanel } from "./components/AgentRuntimePanel";
-import { AgentTimeline } from "./components/AgentTimeline";
-import { EventFeed } from "./components/EventFeed";
-import { MetricsGrid } from "./components/MetricsGrid";
-import { WorkflowTable } from "./components/WorkflowTable";
-import { useLiveRecovery } from "./hooks/useLiveRecovery";
-
-gsap.registerPlugin(ScrollTrigger);
+const LiveDashboardSection = lazy(() =>
+  import("./components/landing/LiveDashboardSection").then((m) => ({ default: m.LiveDashboardSection }))
+);
 
 const agents = [
   "Sentinel",
@@ -79,7 +71,7 @@ const useCases = [
   ["Infrastructure Reliability", "Orchestrate recovery agents across APIs, queues, and jobs.", Network],
   ["AI Operations", "Stream incidents, plans, and health verdicts as first-class telemetry.", Activity],
   ["Workflow Resilience", "Turn brittle DAGs into systems that can repair their own execution.", Workflow]
-];
+] as const;
 
 const roadmap = [
   "Semantic recovery planning",
@@ -90,16 +82,15 @@ const roadmap = [
   "Cross-workflow immune response"
 ];
 
-const sectionRevealTransition = { duration: 0.9, ease: [0.2, 0.8, 0.2, 1] } as const;
-const revealViewport = { once: true, margin: "-120px" } as const;
+const revealViewport = { once: true, margin: "-80px" } as const;
 
 const BrainMesh = memo(function BrainMesh() {
   const group = useRef<Group>(null);
   const points = useRef<Points>(null);
   const positions = useMemo(() => {
-    const values = new Float32Array(360 * 3);
-    for (let i = 0; i < 360; i += 1) {
-      const radius = 1.7 + Math.random() * 1.8;
+    const values = new Float32Array(140 * 3);
+    for (let i = 0; i < 140; i += 1) {
+      const radius = 1.7 + Math.random() * 1.4;
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
       values[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
@@ -111,11 +102,11 @@ const BrainMesh = memo(function BrainMesh() {
 
   useFrame(({ clock, pointer }) => {
     if (group.current) {
-      group.current.rotation.y = clock.elapsedTime * 0.08 + pointer.x * 0.16;
-      group.current.rotation.x = Math.sin(clock.elapsedTime * 0.22) * 0.08 - pointer.y * 0.08;
+      group.current.rotation.y = clock.elapsedTime * 0.06 + pointer.x * 0.1;
+      group.current.rotation.x = Math.sin(clock.elapsedTime * 0.18) * 0.06 - pointer.y * 0.05;
     }
     if (points.current) {
-      points.current.rotation.z = clock.elapsedTime * 0.035;
+      points.current.rotation.z = clock.elapsedTime * 0.025;
     }
   });
 
@@ -125,7 +116,7 @@ const BrainMesh = memo(function BrainMesh() {
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[positions, 3]} />
         </bufferGeometry>
-        <pointsMaterial color="#67e8f9" size={0.025} transparent opacity={0.78} />
+        <pointsMaterial color="#67e8f9" size={0.022} transparent opacity={0.72} />
       </points>
       {agents.map((agent, index) => {
         const angle = (index / agents.length) * Math.PI * 2;
@@ -134,22 +125,22 @@ const BrainMesh = memo(function BrainMesh() {
         const z = Math.sin(angle) * 2.45;
         return (
           <mesh key={agent} position={[x, y, z]}>
-            <sphereGeometry args={[index === 7 ? 0.18 : 0.1, 32, 32]} />
+            <sphereGeometry args={[index === 7 ? 0.16 : 0.09, 12, 12]} />
             <meshStandardMaterial
               color={index === 7 ? "#a78bfa" : "#22d3ee"}
               emissive={index === 7 ? "#7c3aed" : "#0891b2"}
-              emissiveIntensity={1.6}
+              emissiveIntensity={1.2}
             />
           </mesh>
         );
       })}
       <mesh>
-        <torusKnotGeometry args={[1.2, 0.01, 180, 12, 2, 5]} />
-        <meshBasicMaterial color="#38bdf8" transparent opacity={0.35} />
+        <torusKnotGeometry args={[1.2, 0.01, 64, 8, 2, 5]} />
+        <meshBasicMaterial color="#38bdf8" transparent opacity={0.28} />
       </mesh>
-      <ambientLight intensity={0.6} />
-      <pointLight position={[3, 4, 4]} color="#22d3ee" intensity={10} />
-      <pointLight position={[-4, -2, -2]} color="#8b5cf6" intensity={7} />
+      <ambientLight intensity={0.55} />
+      <pointLight position={[3, 4, 4]} color="#22d3ee" intensity={8} />
+      <pointLight position={[-4, -2, -2]} color="#8b5cf6" intensity={5} />
     </group>
   );
 });
@@ -158,7 +149,7 @@ function IntroCurtain() {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => setVisible(false), 1450);
+    const timeout = window.setTimeout(() => setVisible(false), 1200);
     return () => window.clearTimeout(timeout);
   }, []);
 
@@ -167,16 +158,17 @@ function IntroCurtain() {
       {visible ? (
         <motion.div
           className="fixed inset-0 z-50 grid place-items-center bg-black"
-          exit={{ opacity: 0, filter: "blur(18px)" }}
-          transition={{ duration: 0.7, ease: "easeInOut" }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.45, ease: "easeOut" }}
         >
           <motion.div
-            initial={{ opacity: 0, scale: 0.92 }}
+            initial={{ opacity: 0, scale: 0.94 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.08 }}
+            exit={{ opacity: 0, scale: 1.02 }}
+            transition={{ duration: 0.45 }}
             className="text-center"
           >
-            <div className="mx-auto mb-5 grid h-20 w-20 place-items-center rounded-full border border-cyan-300/40 bg-cyan-300/10 shadow-[0_0_80px_rgba(34,211,238,0.45)]">
+            <div className="mx-auto mb-5 grid h-20 w-20 place-items-center rounded-full border border-cyan-300/40 bg-cyan-300/10 shadow-[0_0_40px_rgba(34,211,238,0.25)]">
               <BrainCircuit className="h-9 w-9 text-cyan-200" />
             </div>
             <p className="text-xs font-bold uppercase tracking-[0.4em] text-cyan-100">CORTEX boot sequence</p>
@@ -190,20 +182,22 @@ function IntroCurtain() {
 const SectionReveal = memo(function SectionReveal({
   children,
   className = "",
-  id
+  id,
+  deferred = false
 }: {
   children: React.ReactNode;
   className?: string;
   id?: string;
+  deferred?: boolean;
 }) {
   return (
     <motion.section
       id={id}
-      initial={{ opacity: 0, y: 64, filter: "blur(12px)" }}
-      whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      initial={{ opacity: 0, y: 28 }}
+      whileInView={{ opacity: 1, y: 0 }}
       viewport={revealViewport}
-      transition={sectionRevealTransition}
-      className={className}
+      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+      className={`${deferred ? "landing-section-deferred" : ""} ${className}`.trim()}
     >
       {children}
     </motion.section>
@@ -212,15 +206,24 @@ const SectionReveal = memo(function SectionReveal({
 
 const Hero = memo(function Hero() {
   const heroRef = useRef<HTMLElement>(null);
-  const heroInView = useInView(heroRef, { margin: "360px 0px 360px 0px" });
-  const { scrollYProgress } = useScroll();
-  const heroY = useTransform(scrollYProgress, [0, 0.28], [0, -140]);
+  const [heroVisible, setHeroVisible] = useState(true);
+
+  useEffect(() => {
+    const node = heroRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setHeroVisible(entry.isIntersecting),
+      { rootMargin: "120px 0px", threshold: 0.08 }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <section ref={heroRef} className="relative min-h-screen overflow-hidden px-5 py-6 sm:px-8">
       <div className="hero-grid absolute inset-0" />
-      <div className="data-rain absolute inset-0 opacity-70" />
-      <motion.div style={{ y: heroY }} className="relative z-10 mx-auto flex min-h-[92vh] max-w-7xl flex-col">
+      <div className={`data-rain absolute inset-0 ${heroVisible ? "is-active" : ""}`} />
+      <div className="relative z-10 mx-auto flex min-h-[92vh] max-w-7xl flex-col hero-parallax-layer">
         <nav className="flex items-center justify-between py-2">
           <a href="#hero" className="flex items-center gap-3">
             <span className="grid h-10 w-10 place-items-center rounded-lg border border-cyan-300/30 bg-cyan-300/10">
@@ -228,14 +231,14 @@ const Hero = memo(function Hero() {
             </span>
             <span className="text-sm font-black uppercase tracking-[0.3em] text-slate-100">CORTEX</span>
           </a>
-          <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-cyan-100 backdrop-blur md:flex">
+          <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-cyan-100 md:flex">
             <span className="live-dot" />
             autonomous recovery OS
           </div>
         </nav>
 
         <div id="hero" className="grid flex-1 items-center gap-10 py-14 lg:grid-cols-[1fr_0.9fr]">
-          <motion.div initial={{ opacity: 0, y: 42 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9 }}>
+          <motion.div initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65 }}>
             <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-cyan-200/20 bg-cyan-200/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-cyan-100">
               <Sparkles className="h-4 w-4" />
               AI Infrastructure + Autonomous Recovery
@@ -247,11 +250,15 @@ const Hero = memo(function Hero() {
               Autonomous recovery infrastructure powered by persistent operational memory.
             </p>
             <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-              <a className="cortex-button primary" href="#live-os">
+              <a className="cortex-button primary" href="/dashboard">
                 <Play className="h-5 w-5" />
-                Launch Live Demo
+                Open Dashboard
               </a>
-              <a className="cortex-button secondary" href="#architecture">
+              <a className="cortex-button secondary" href="#live-os">
+                <TerminalSquare className="h-5 w-5" />
+                Live Preview
+              </a>
+              <a className="cortex-button secondary" href="/dashboard/architecture">
                 <GitBranch className="h-5 w-5" />
                 View Architecture
               </a>
@@ -259,46 +266,45 @@ const Hero = memo(function Hero() {
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, filter: "blur(18px)" }}
-            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-            transition={{ duration: 1.1, delay: 0.2 }}
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.75, delay: 0.12 }}
             className="relative min-h-[430px] lg:min-h-[620px]"
           >
-            <div className="absolute inset-0 rounded-full bg-cyan-400/15 blur-3xl" />
+            <div className="hero-glow absolute inset-0 rounded-full" />
             <Canvas
               camera={{ position: [0, 0, 6.2], fov: 48 }}
               className="hero-canvas"
-              dpr={[1, 1.5]}
-              frameloop={heroInView ? "always" : "never"}
-              gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
+              dpr={[1, 1.25]}
+              frameloop={heroVisible ? "always" : "never"}
+              gl={{ antialias: false, alpha: true, powerPreference: "high-performance" }}
             >
               <Suspense fallback={null}>
                 <BrainMesh />
               </Suspense>
             </Canvas>
-            <div className="absolute inset-x-4 bottom-5 grid gap-3 rounded-xl border border-cyan-200/20 bg-black/55 p-4 shadow-[0_0_60px_rgba(34,211,238,0.22)] backdrop-blur-xl sm:inset-x-10">
+            <div className="hero-stream-panel absolute inset-x-4 bottom-5 grid gap-3 p-4 sm:inset-x-10">
               {["failure.signal", "agent.plan", "hydradb.restore"].map((item, index) => (
-                <motion.div
+                <div
                   key={item}
-                  animate={{ opacity: [0.45, 1, 0.45], x: [0, 8, 0] }}
-                  transition={{ duration: 2.8, repeat: Infinity, delay: index * 0.45 }}
-                  className="flex items-center justify-between border-b border-white/10 pb-2 last:border-0 last:pb-0"
+                  className="hero-stream-row flex items-center justify-between border-b border-white/10 pb-2 last:border-0 last:pb-0"
+                  style={{ "--stream-delay": `${index * 0.45}s` } as CSSProperties}
                 >
                   <span className="font-mono text-xs text-cyan-100">{item}</span>
                   <span className="font-mono text-xs text-emerald-200">streaming</span>
-                </motion.div>
+                </div>
               ))}
             </div>
           </motion.div>
         </div>
-      </motion.div>
+      </div>
     </section>
   );
 });
 
 const OrchestrationVisual = memo(function OrchestrationVisual() {
   return (
-    <SectionReveal id="architecture" className="relative mx-auto max-w-7xl px-5 py-24 sm:px-8">
+    <SectionReveal id="architecture" className="relative mx-auto max-w-7xl px-5 py-24 sm:px-8" deferred>
       <div className="section-kicker">Live orchestration visual</div>
       <div className="section-heading">
         <h2>Recovery agents move like a living operating system.</h2>
@@ -312,16 +318,14 @@ const OrchestrationVisual = memo(function OrchestrationVisual() {
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {agents.map((agent, index) => (
-              <motion.div
+              <div
                 key={agent}
-                animate={{ y: [0, -5, 0] }}
-                transition={{ duration: 2.4, repeat: Infinity, delay: index * 0.18 }}
-                className="agent-orb"
+                className="agent-orb agent-orb-float"
                 style={{ "--agent-delay": `${index * 0.18}s` } as CSSProperties}
               >
                 <span>{agent}</span>
                 <small>{index === 7 ? "memory core" : "agent online"}</small>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
@@ -330,21 +334,21 @@ const OrchestrationVisual = memo(function OrchestrationVisual() {
           <div className="relative grid gap-5">
             {pipeline.map((step, index) => (
               <div key={step} className="pipeline-row">
-                <motion.div
-                  animate={{ scale: [1, 1.18, 1], opacity: [0.62, 1, 0.62] }}
-                  transition={{ duration: 2, repeat: Infinity, delay: index * 0.35 }}
-                  className="pipeline-node"
+                <div
+                  className="pipeline-node pipeline-node-pulse"
+                  style={{ "--pipeline-delay": `${index * 0.35}s` } as CSSProperties}
                 >
                   {index + 1}
-                </motion.div>
+                </div>
                 <div>
                   <strong>{step}</strong>
-                  <p>{agents[index]} hands state to {agents[(index + 1) % agents.length]}.</p>
+                  <p>
+                    {agents[index]} hands state to {agents[(index + 1) % agents.length]}.
+                  </p>
                 </div>
-                <motion.div
-                  className="hidden h-px flex-1 bg-gradient-to-r from-cyan-300 via-blue-400 to-violet-400 md:block"
-                  animate={{ opacity: [0.2, 0.9, 0.2] }}
-                  transition={{ duration: 1.8, repeat: Infinity, delay: index * 0.2 }}
+                <div
+                  className="pipeline-link hidden h-px flex-1 md:block"
+                  style={{ "--pipeline-delay": `${index * 0.2}s` } as CSSProperties}
                 />
               </div>
             ))}
@@ -355,16 +359,16 @@ const OrchestrationVisual = memo(function OrchestrationVisual() {
   );
 });
 
-function RecoveryStory() {
+const RecoveryStory = memo(function RecoveryStory() {
   const [active, setActive] = useState(0);
 
   useEffect(() => {
-    const interval = window.setInterval(() => setActive((current) => (current + 1) % story.length), 1550);
+    const interval = window.setInterval(() => setActive((current) => (current + 1) % story.length), 2200);
     return () => window.clearInterval(interval);
   }, []);
 
   return (
-    <SectionReveal className="relative px-5 py-24 sm:px-8">
+    <SectionReveal className="relative px-5 py-24 sm:px-8" deferred>
       <div className="mx-auto max-w-7xl">
         <div className="section-kicker">Failure to recovery story</div>
         <div className="section-heading">
@@ -385,39 +389,25 @@ function RecoveryStory() {
             </button>
           ))}
         </div>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={active}
-            initial={{ opacity: 0, y: 22, filter: "blur(12px)" }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            exit={{ opacity: 0, y: -18, filter: "blur(12px)" }}
-            transition={{ duration: 0.42 }}
-            className="recovery-card"
-          >
-            <div className="flex items-center gap-3">
-              <TimerReset className="h-6 w-6 text-cyan-100" />
-              <span className="font-mono text-xs uppercase tracking-[0.22em] text-cyan-100">state transition</span>
-            </div>
-            <h3>{story[active].title}</h3>
-            <p>{story[active].detail}</p>
-            <div className="checkpoint-bar">
-              <motion.span
-                key={active}
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: (active + 1) / story.length }}
-                transition={{ duration: 0.85, ease: "easeOut" }}
-              />
-            </div>
-          </motion.div>
-        </AnimatePresence>
+        <div className="recovery-card story-card-active" key={active}>
+          <div className="flex items-center gap-3">
+            <TimerReset className="h-6 w-6 text-cyan-100" />
+            <span className="font-mono text-xs uppercase tracking-[0.22em] text-cyan-100">state transition</span>
+          </div>
+          <h3>{story[active].title}</h3>
+          <p>{story[active].detail}</p>
+          <div className="checkpoint-bar">
+            <span className="checkpoint-fill" style={{ transform: `scaleX(${(active + 1) / story.length})` }} />
+          </div>
+        </div>
       </div>
     </SectionReveal>
   );
-}
+});
 
 const HydraMemory = memo(function HydraMemory() {
   return (
-    <SectionReveal className="mx-auto grid max-w-7xl gap-10 px-5 py-24 sm:px-8 lg:grid-cols-[0.85fr_1.15fr]">
+    <SectionReveal className="mx-auto grid max-w-7xl gap-10 px-5 py-24 sm:px-8 lg:grid-cols-[0.85fr_1.15fr]" deferred>
       <div>
         <div className="section-kicker">HydraDB memory engine</div>
         <h2 className="text-4xl font-black leading-tight text-white sm:text-6xl">Persistent memory for autonomous recovery.</h2>
@@ -436,81 +426,22 @@ const HydraMemory = memo(function HydraMemory() {
       </div>
       <div className="memory-grid glass-panel">
         {memoryCells.map((cell, index) => (
-          <motion.div
+          <div
             key={cell}
-            animate={{ opacity: [0.45, 1, 0.55], scale: [1, 1.03, 1] }}
-            transition={{ duration: 2.2, repeat: Infinity, delay: index * 0.12 }}
-            className="memory-cell"
+            className="memory-cell memory-cell-pulse"
+            style={{ "--memory-delay": `${index * 0.12}s` } as CSSProperties}
           >
             <span>{cell}</span>
-          </motion.div>
+          </div>
         ))}
       </div>
     </SectionReveal>
   );
 });
 
-function LiveDashboardPreview() {
-  const {
-    workflows,
-    metrics,
-    latestRecovery,
-    loading,
-    recover,
-    recoveringId,
-    events,
-    connected,
-    session,
-    agents: runtimeAgents,
-    timeline
-  } = useLiveRecovery();
-  const live = Boolean(session && session.phase !== "idle");
-
-  return (
-    <SectionReveal id="live-os" className="mx-auto max-w-7xl px-5 py-24 sm:px-8">
-      <div className="section-kicker">Real-time dashboard preview</div>
-      <div className="section-heading">
-        <h2>A futuristic observability OS, wired to live recovery events.</h2>
-        <p>Runtime, rollback events, WebSocket activity, agent state, and workflow health share one operating surface.</p>
-      </div>
-      <div className="landing-dashboard mt-12">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <TerminalSquare className="h-5 w-5 text-cyan-200" />
-            <span className="font-mono text-xs uppercase tracking-[0.22em] text-slate-300">cortex live system</span>
-          </div>
-          <span className={`stream-status ${connected ? "online" : "offline"}`}>
-            <span className="live-dot" />
-            {connected ? "WebSocket online" : "WebSocket offline"}
-          </span>
-        </div>
-        <MemoMetricsGrid metrics={metrics} />
-        <div className="content-grid">
-          {loading ? (
-            <section className="panel loading-panel">Loading CORTEX telemetry...</section>
-          ) : (
-            <MemoWorkflowTable workflows={workflows} recoveringId={recoveringId} onRecover={recover} />
-          )}
-          <div className="side-stack">
-            <MemoAgentRuntimePanel agents={runtimeAgents} session={session} />
-            <MemoAgentTimeline recovery={latestRecovery} timeline={timeline} session={session} live={live} />
-            <MemoEventFeed events={events} connected={connected} />
-          </div>
-        </div>
-      </div>
-    </SectionReveal>
-  );
-}
-
-const MemoMetricsGrid = memo(MetricsGrid);
-const MemoWorkflowTable = memo(WorkflowTable);
-const MemoAgentRuntimePanel = memo(AgentRuntimePanel);
-const MemoAgentTimeline = memo(AgentTimeline);
-const MemoEventFeed = memo(EventFeed);
-
 const WhyCortex = memo(function WhyCortex() {
   return (
-    <SectionReveal className="mx-auto max-w-7xl px-5 py-24 sm:px-8">
+    <SectionReveal className="mx-auto max-w-7xl px-5 py-24 sm:px-8" deferred>
       <div className="section-kicker">Why CORTEX matters</div>
       <div className="section-heading">
         <h2>AI workflows are becoming infrastructure. Infrastructure needs recovery.</h2>
@@ -518,17 +449,12 @@ const WhyCortex = memo(function WhyCortex() {
       </div>
       <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {useCases.map(([title, detail, Icon], index) => (
-          <motion.div
-            key={title as string}
-            whileHover={{ y: -8, scale: 1.015 }}
-            transition={{ type: "spring", stiffness: 260, damping: 22 }}
-            className="use-card"
-          >
+          <article key={title} className="use-card use-card-hover">
             <Icon className="h-7 w-7 text-cyan-200" />
-            <h3>{title as string}</h3>
-            <p>{detail as string}</p>
+            <h3>{title}</h3>
+            <p>{detail}</p>
             <span>0{index + 1}</span>
-          </motion.div>
+          </article>
         ))}
       </div>
     </SectionReveal>
@@ -537,7 +463,7 @@ const WhyCortex = memo(function WhyCortex() {
 
 const FutureLayer = memo(function FutureLayer() {
   return (
-    <SectionReveal className="mx-auto max-w-7xl px-5 py-24 sm:px-8">
+    <SectionReveal className="mx-auto max-w-7xl px-5 py-24 sm:px-8" deferred>
       <div className="future-panel">
         <div>
           <div className="section-kicker">Future of AI infrastructure</div>
@@ -567,22 +493,18 @@ const FutureLayer = memo(function FutureLayer() {
 
 function FinalCta() {
   return (
-    <section className="relative overflow-hidden px-5 py-28 sm:px-8">
+    <section className="relative overflow-hidden px-5 py-28 sm:px-8 landing-section-deferred">
       <div className="orbital-bg" />
       <div className="relative z-10 mx-auto max-w-5xl text-center">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          className="mx-auto mb-8 grid h-24 w-24 place-items-center rounded-full border border-cyan-200/30 bg-cyan-200/10 shadow-[0_0_100px_rgba(34,211,238,0.35)]"
-        >
+        <div className="cta-orbit-icon mx-auto mb-8 grid h-24 w-24 place-items-center rounded-full border border-cyan-200/30 bg-cyan-200/10 shadow-[0_0_60px_rgba(34,211,238,0.22)]">
           <Stethoscope className="h-10 w-10 text-cyan-100" />
-        </motion.div>
+        </div>
         <h2 className="text-5xl font-black leading-none text-white sm:text-7xl">AI systems need an immune system.</h2>
         <p className="mt-6 text-3xl font-black text-cyan-100 sm:text-5xl">CORTEX is building it.</p>
         <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
-          <a className="cortex-button primary" href="#live-os">
+          <a className="cortex-button primary" href="/dashboard">
             <Zap className="h-5 w-5" />
-            Launch Live Demo
+            Open Dashboard
           </a>
           <a className="cortex-button secondary" href="#hero">
             <ArrowRight className="h-5 w-5" />
@@ -599,35 +521,11 @@ function FinalCta() {
   );
 }
 
+function LiveDashboardFallback() {
+  return <section className="mx-auto max-w-7xl px-5 py-24 text-slate-400">Loading live dashboard preview…</section>;
+}
+
 export function App() {
-  useEffect(() => {
-    const lenis = new Lenis({ lerp: 0.085, smoothWheel: true });
-    lenis.on("scroll", () => ScrollTrigger.update());
-    gsap.ticker.lagSmoothing(0);
-    const tick = (time: number) => lenis.raf(time * 1000);
-    gsap.ticker.add(tick);
-
-    const sections = gsap.utils.toArray<HTMLElement>(".glass-panel, .use-card, .future-panel");
-    sections.forEach((section) => {
-      gsap.fromTo(
-        section,
-        { y: 32, opacity: 0.55 },
-        {
-          y: 0,
-          opacity: 1,
-          ease: "power3.out",
-          scrollTrigger: { trigger: section, start: "top 86%", end: "top 48%", scrub: 0.7 }
-        }
-      );
-    });
-
-    return () => {
-      gsap.ticker.remove(tick);
-      lenis.destroy();
-      ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
-    };
-  }, []);
-
   return (
     <main className="landing-shell">
       <IntroCurtain />
@@ -635,7 +533,9 @@ export function App() {
       <OrchestrationVisual />
       <RecoveryStory />
       <HydraMemory />
-      <LiveDashboardPreview />
+      <Suspense fallback={<LiveDashboardFallback />}>
+        <LiveDashboardSection />
+      </Suspense>
       <WhyCortex />
       <FutureLayer />
       <FinalCta />

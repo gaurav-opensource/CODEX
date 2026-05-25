@@ -1,8 +1,8 @@
 import { CheckCircle2, CircleDashed, History, Loader2, RotateCcw, XCircle } from "lucide-react";
 import { memo } from "react";
 
-import type { LiveRecoverySession, TimelineEntry } from "../lib/recoveryRuntime";
-import type { RecoveryResult } from "../types/cortex";
+import type { LiveRecoverySession, TimelineEntry } from "../dashboard/lib/recoveryRuntime";
+import type { RecoveryResult } from "../dashboard/types/cortex";
 
 const defaultSteps = [
   "Sentinel waits for anomalous telemetry",

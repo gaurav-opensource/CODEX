@@ -11,9 +11,18 @@ class Settings(BaseSettings):
     environment: str = Field(default="development")
     api_prefix: str = "/api/v1"
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
+    enable_testing_routes: bool = False
 
     hydradb_api_key: str | None = None
     hydradb_project_id: str = "cortex-local"
+    grok_api_key: str | None = None
+    grok_base_url: str = "https://api.x.ai/v1"
+    grok_model: str = "latest"
+    grok_timeout_seconds: float = 8.0
+    grok_max_retries: int = 2
+    reasoning_confidence_threshold: int = 72
+    reasoning_prompt_cache_ttl_seconds: int = 300
+    reasoning_ws_batch_window_ms: int = 250
 
     detection_latency_target_ms: int = 100
     recovery_time_target_ms: int = 1000

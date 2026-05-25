@@ -1,7 +1,7 @@
 import { Loader2, RotateCw } from "lucide-react";
 import { memo } from "react";
 
-import type { WorkflowRow } from "../hooks/useLiveRecovery";
+import type { WorkflowRow } from "../dashboard/hooks/useLiveRecovery";
 import { StatusPill } from "./StatusPill";
 
 interface WorkflowTableProps {

@@ -1,7 +1,7 @@
 import { Brain, Database } from "lucide-react";
 import { memo } from "react";
 
-import type { AgentNode, LiveRecoverySession } from "../lib/recoveryRuntime";
+import type { AgentNode, LiveRecoverySession } from "../dashboard/lib/recoveryRuntime";
 
 interface AgentRuntimePanelProps {
   agents: AgentNode[];
