@@ -10,7 +10,11 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     environment: str = Field(default="development")
     api_prefix: str = "/api/v1"
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
+    cors_origins: list[str] = Field(default_factory=lambda: [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "https://cortex-frontend.netlify.app"
+    ])
     enable_testing_routes: bool = False
 
     hydradb_api_key: str | None = None
