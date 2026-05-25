@@ -13,7 +13,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        target: "https://codex-backend-m1p9.onrender.com",
         changeOrigin: true,
         ws: true
       }
