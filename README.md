@@ -104,7 +104,7 @@ The backend is a FastAPI application that owns workflows, incidents, recovery or
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/cortex.git
+git clone https://github.com/gaurav-opensource/CORTEX.git
 cd cortex
 ```
 
